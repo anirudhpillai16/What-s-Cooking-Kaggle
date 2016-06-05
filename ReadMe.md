@@ -1,4 +1,4 @@
-## This is my Solution to Kaggle Problem What's cooking which also served as my Machine learning Project
+# This is my Solution to Kaggle Problem "What's cooking" which also served as my Machine learning Project
 
 I have tried following Algorithms to achieve good accuracy.
 
