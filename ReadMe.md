@@ -7,4 +7,4 @@ I have tried following Algorithms to achieve good accuracy.
 * Neural Network
 * Random Forest
 
-[Link to Problem](https://www.kaggle.com/c/whats-cooking)
+[Link to the Problem](https://www.kaggle.com/c/whats-cooking)
