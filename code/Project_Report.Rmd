@@ -1,0 +1,360 @@
+---
+title: "Class Project: What's Cooking"
+author: "FNU Anirudh and Prudhvi Raj Indana"
+date: "December 10, 2015"
+output: word_document
+---
+## INTRODUCTION
+
+The goal of this project is to study the characterstics of dishes in training set and learn traits associated to particular cuisine and classify cuisine based on ingredients in test set.  
+  
+  
+  In the report, we describe the data we use and how we process it. Then we explore techniques for classification and also look at unsupervised learning techniques for more information. JSON files for  training and test dataset has been provided.
+  
+
+
+
+##1. DATASET
+
+Our Main dataset is train data set which we use to train our model and then implement our model to classify cuisines in test dataset. First let us analyze dimension of training dataset. Both training and test datasets are in JSON format and were read using library jsonlite in R.
+
+```{r,eval=TRUE,warning=FALSE,echo=FALSE,message=FALSE}
+library(jsonlite)
+library(tree)
+library(tm)
+library(SnowballC)
+library(neuralnet)
+library(plyr)
+library(Matrix)
+library(randomForest)
+library(e1071)
+library(nnet)
+library(RColorBrewer)
+library(RCurl)
+train_data<- fromJSON('C:/ML/Project/train.json')
+test_data<- fromJSON('C:/ML/Project/test.json')
+dim(train_data)
+
+
+```
+
+There are 39774 rows and 3 columns in our training dataset.
+
+Let us now analyze the column names in our dataset
+```{r,eval=TRUE,warning=FALSE,echo=FALSE,message=FALSE}
+names(train_data)
+
+
+```
+
+From this we see that there are 3 colummns in training data namely id, cuisine and ingredients.
+
+Let us print first row to see how our dataset looks.
+
+```{r,eval=TRUE,warning=FALSE,echo=FALSE,message=FALSE}
+train_data[1,]
+
+
+```
+
+From above we see that all the ingredient that are associated with a dish are stored in single vector hence in order to classify we will have to split each ingredient and check it's occurence in other dishes to understand the pattern.
+
+Let us now Analyze how many unique cuisines are there in our dataset and how they are distributed and how many times does each appear in our training data.
+
+```{r,eval=TRUE,warning=FALSE,echo=FALSE,message=FALSE}
+ftable<-table(train_data$cuisine)
+barplot(ftable,main="Frequency of Cuisines")
+pie(ftable,main="Pie-Chart of Cuisines")
+ftable
+max(ftable)
+
+```
+
+We find that there are 20 different or unique cuisines in our dataset. From barplot we see that there are couple of cuisines which have high frequency, To get better understanding we plot Pie Chart and find out that Italian and Mexican cuisines have high frequency compared to other dishes.We print all the cuisines in our dataset and number of times each cuisine repeats and find that there are 7838 Italian dishes out of 39,774 dishes. Our data is categorical data.
+
+#2. TECHNIQUES
+
+We have used following classification algorithms in our project to classify cuisines:-
+
+###2.1 Naive Bayes###
+
+The Naive Bayes algorithm is an intuitive method that uses the probabilities of each attribute belonging to each class to make a prediction. It is the supervised learning approach to model a predictive modeling problem probabilistically.
+
+Naive bayes simplifies the calculation of probabilities by assuming that the probability of each attribute belonging to a given class value is independent of all other attributes. This is a strong assumption but results in a fast and effective method.
+
+The probability of a class value given a value of an attribute is called the conditional probability. By multiplying the conditional probabilities together for each attribute for a given class value, we have a probability of a data instance belonging to that class.
+
+To make a prediction we can calculate probabilities of the instance belonging to each class and select the class value with the highest probability.
+
+Naive bases is often described using categorical data because it is easy to describe and calculate using ratios. A more useful version of the algorithm for our purposes supports numeric attributes and assumes the values of each numerical attribute are normally distributed (fall somewhere on a bell curve). Again, this is a strong assumption, but still gives robust results.
+
+```{r,eval=TRUE,warning=FALSE,echo=FALSE,message=FALSE}
+train_ingredients <- Corpus(VectorSource(train_data$ingredients))
+#train_ingredients[[1]]$content
+#print("TRAIN INGREDIENTS MATRIX");
+train_ingredientsDTM <- DocumentTermMatrix(train_ingredients)
+#A term-document matrix where those terms from x are removed which have at least a sparse percentage of empty (i.e., terms occurring 0 times in a document) elements. I.e., the resulting matrix contains only terms with a sparse factor of less than sparse.
+train_sparse <- removeSparseTerms(train_ingredientsDTM, 0.95)
+train_ingredientsDTM <- as.data.frame(as.matrix(train_sparse))
+
+#- Add the dependent variable to the data.frame
+mons= as.factor(train_data$cuisine);
+#print(mons);
+train_ingredientsDTM$cuisine <- as.factor(train_data$cuisine)
+
+#- build final train object and free memory
+train <- train_ingredientsDTM
+#print(train)
+
+# Apply Same Procedure to Test Data
+test_ingredients <- Corpus(VectorSource(test_data$ingredients))
+test_ingredients <- tm_map(test_ingredients, stemDocument)
+test_ingredientsDTM <- DocumentTermMatrix(test_ingredients)
+test_sparse <- removeSparseTerms(test_ingredientsDTM, 0.95)
+test_ingredientsDTM <- as.data.frame(as.matrix(test_sparse))
+
+#- build final test object and free memory
+test <- test_ingredientsDTM
+
+```
+
+####Reason for Using Naive Bayes####
+
+* Naive Bayes can handle missing data
+* We can use Naive Bayes for Categorical data by calculating frequency of observation.
+* Probabilities for each attribute are calculated independently from the training dataset. We can use a search algorithm to explore the combination of the probabilities of different attributes together and evaluate their performance at predicting the output variable. We can use probabilities to do feature selection.
+* Naive Bayes can give increased performance and focus on the elements of the problem that are more difficult to model by identifying and separating out segments that are easily handled by a simple probabilistic apporach.
+* One of the Benefit of Naive Bayes is that we can re-calculate probabilities as data changes.
+* An interesting point about Naive Bayes is that even when the independence assumption is violated and there are clear known relationships between attributes, it works anyway.
+
+###2.2 K- Nearest Neighbour###
+
+The purpose of the k Nearest Neighbours (kNN) algorithm is to use a database in which the data points are separated into several separate classes to predict the classification of a new sample point.
+
+we consider each of the characteristics in our training set as a different dimension in some space, and take the value an observation has for this characteristic to be its coordinate in that dimension, so getting a set of points in space. We can then consider the
+similarity of two points to be the distance between them in this space under some appropriate metric.
+
+The algorithm can be summarised as:
+
+* A positive integer k is specified, along with a new sample
+* We select the k entries in our database which are closest to the new sample
+* We find the most common classification of these entries
+* This is the classification we give to the new sample
+
+###Reason for Using KNN Algorithm###
+
+* Cost of Learning process is zero.
+* No assumptions about the characterstics of the concept to learn have to be done.
+* Complex concepts can be learned by local approximation using simple procedures.
+
+###2.3 Neural Network###
+
+Neural networks or artificial neural networks (ANNs)  have received a lot of attention for their abilities to 'learn' relationships among variables. They represent an innovative technique for model fitting that doesn't rely on conventional assumptions necessary for standard models and they can also quite effectively handle multivariate response data. As a part of this project we want to train on multivariate data from whats cooking and compare it with other bench mark algorithams.
+
+###Reasons for using Neural Networks###
+
+*  Ability to implicitly detect complex nonlinear relationships between dependent and independent variables.
+* Ability to detect all possible interactions between predictor variables.
+* Availability of multiple training algorithms.
+
+###2.4 Random Forest###
+Random Forests grows many classification trees. To classify a new object from an input vector, put the input vector down each of the trees in the forest. Each tree gives a classification, and we say the tree "votes" for that class. The forest chooses the classification having the most votes (over all the trees in the forest).
+
+Each tree is grown as follows:
+
+* If the number of cases in the training set is N, sample N cases at random - but with replacement, from the original data. This sample will be the training set for growing the tree.
+* If there are M input variables, a number m<<M is specified such that at each node, m variables are selected at random out of the M and the best split on these m is used to split the node. The value of m is held constant during the forest growing.
+* Each tree is grown to the largest extent possible. There is no pruning.
+
+###Reasons for using Random Forest###
+
+* It runs efficiently on large data bases.
+* It can handle thousands of input variables without variable deletion.
+* It gives estimates of what variables are important in the classification.
+* It offers an experimental method for detecting variable interactions.
+
+#3.RESULTS
+
+##3.1 Naive Bayes##
+
+We run the Naive Bayes Algorithm after removing redundant features or ingredients from our training dataset.We will first try to predict our accuracy on training dataset and then try to predict cuisine in test dataset.
+```{r,eval=TRUE,warning=FALSE,echo=FALSE,message=FALSE}
+M<-naiveBayes(train[,-91],train[,91])
+#print("Posterior Probabilities of Categorical Variable is=")
+#M
+t=predict(M,train[-91])
+print("Naive Bayes Predictions")
+table(t)
+y=matrix(train[,91])
+correct=0
+for(i in 1:nrow(y)){
+  if(t[i]==y[i]){
+    correct = correct + 1
+  }
+}
+acc = correct/length(y)*100
+print("Accuracy of Naive Bayes is =")
+acc
+
+```
+
+We get only 40% accuracy on Implementing Naive Bayes. Let us now predict cuisine in our test data set.
+
+```{r,eval=TRUE,warning=FALSE,echo=FALSE,message=FALSE}
+M<-naiveBayes(train[,91]~.,data=train)
+t=predict(M,test)
+table(t)
+
+```
+
+![Naive Bayes Accuracy](C:\Users\lenovo\Pictures\First_Submission.PNG)
+
+We get very low accuracy on our test dataset as seen above. We should try a different algorithm.
+
+##3.2 K-Nearest Neighbours##
+
+We try K-Nearest Neighbours Algorithm to predict cuisine in our training dataset. We split our original training dataset into training and test dataset. We have chosen first 30,000 dishes as training and remaining 9774 as test dataset, We apply KNN to predict cuisine on test dataset.
+
+```{r,eval=TRUE,warning=FALSE,echo=FALSE,message=FALSE}
+library(class)
+train_n<- as.data.frame(train[,-91])
+new_train<- train_n[1:30000,]
+new_test<-train_n[30001:39774,]
+train_target<- train[1:30000,91]
+test_target<- train[30001:39774,91]
+m1<- knn(train = new_train,test = new_test,cl=train_target,k=20)
+#m1
+results=table(test_target,m1)
+y=matrix(test_target)
+correct=0
+for(i in 1:nrow(y)){
+  if(y[i]==m1[i]){
+    correct = correct + 1
+  }
+}
+acc = correct/length(y)*100
+print("The Accuracy of K- Nearest Neighbours is =")
+acc
+
+```
+
+We get 57% accuracy on Implementing K Nearest Neighbour. Let us now predict cuisine in our test data set.
+
+```{r,eval=TRUE,warning=FALSE,echo=FALSE,message=FALSE}
+train_new<- train_n[,]
+test_new<- as.data.frame(test)
+target_train<- train[,91]
+m2<- knn(train = train_new,test = test_new,cl=target_train,k=20 )
+table(m2)
+```
+
+![KNN Accuracy](C:\Users\lenovo\Pictures\Improved_Accuracy.PNG)
+
+We get accuracy of 38% on test dataset which is slightly better than our naive bayes algorithm.
+
+##3.3 Neural Network##
+
+Learning and predicting multinomial data R has a package NNET. NNET uses Back propagation and resilient back propagation to train on the train dataset. We passed parameter values such that the max number of iterations are 1000 and number of weights each input has is 8.
+
+Once NNET is trained we can find graph resultant NNET, We tried to improve the visibility but considering the fact that there are lots of input and output features increased the number of weights there by making the graph look clumsy.
+
+```{r,eval=TRUE,warning=FALSE,echo=FALSE,message=FALSE}
+n <- names(train)
+
+f <- as.formula(paste("cuisine ~", paste(n[!n %in% "cuisine"], collapse = " + ")))
+
+##fit_nn <- neuralnet(f,data=train,hidden=c(5,3),linear.output=T)
+
+fit_nn <- nnet(f,data=train,maxit=1000,size=8)
+
+#import function from Github
+#require(RCurl)
+
+root.url<-'https://gist.githubusercontent.com/fawda123'
+raw.fun<-paste(
+  root.url,
+  '5086859/raw/cc1544804d5027d82b70e74b83b3941cd2184354/nnet_plot_fun.r',
+  sep='/'
+)
+script<-getURL(raw.fun, ssl.verifypeer = FALSE)
+eval(parse(text = script))
+rm('script','raw.fun')
+
+#ploting neural network
+#par(mfrow=c(1,20),family='serif')
+plot(fit_nn,nid=F)
+plot(fit_nn)
+par(mfrow=c(1,1),family='serif')
+
+#k = 
+
+Prediction_nn <- predict(fit_nn, test,type="class")
+table(Prediction_nn)
+#y=matrix(tr[,91])
+test_results_nn<- cbind(test_data[-2],as.character(Prediction_nn))
+colnames(test_results_nn)<- c("id","cuisine")
+write.csv(test_results_nn,file="nn_Submission.csv")
+
+```
+
+We got close to 36% accuracy for our neural network.
+
+#3.4 Random Forest
+
+Since Random forest algorithm has ensemble learning and 'bagging', we choose to implement this algorithm to serve as a base line algorithm both to test and compare Kaggle score obtained with other algorithms(KNN, Neural network). Training Random forest on whole data produced better results than any of our previous algorithms.
+
+```{r,eval=TRUE,warning=FALSE,echo=FALSE,message=FALSE}
+names(train)[names(train)=="all-purpose"] <- "all"
+names(train)[names(train)=="extra-virgin"] <- "extra"
+
+colnames(test) <- colnames(train)[-91]
+
+#train <- data.matrix(train[,-91])
+#Matrix(train,sparse = TRUE)
+
+#n = colnames(train)
+#f <- as.formula(paste("cuisine ~", paste(n[!n %in% "cuisine"], collapse = " + ")))
+
+#neural_model = neuralnet(train[,91]~.,data= train,hidden=2,err.fct = 'ce',
+#                         linear.output = FALSE)
+set.seed = 1
+
+#neural_model = neuralnet(f,data= train,hidden=2,linear.output = FALSE)
+
+fit <- randomForest(cuisine~., data=train, importance=TRUE, ntree=500)
+varImpPlot(fit,col=brewer.pal(8,"Set3"))
+
+layout(matrix(c(1,2),nrow=1),
+       width=c(4,1)) 
+par(mar=c(5,4,4,0)) #No margin on the right side
+plot(fit, log="y")
+par(mar=c(5,0,4,2)) #No margin on the left side
+plot(c(0,1),type="n", axes=F, xlab="", ylab="")
+legend("top", colnames(fit$err.rate),col=brewer.pal(8,"Set3"),cex=0.8,fill=1:20)
+
+#test$cuisine <- integer(0)
+Prediction <- predict(fit, test)
+table(Prediction)
+#y=matrix(tr[,91])
+test_results<- cbind(test_data[-2],as.character(Prediction))
+colnames(test_results)<- c("id","cuisine")
+write.csv(test_results,file="Submission.csv")
+
+```
+
+We get accuracy of 42% on our test dataset which is highest we have scored.
+
+#4. Conclusion
+
+Although our algorithams did not achieve top ranks in kaggle tire, they performed fairly well and ensemble these algorithms might be 
+done to improve the performace. Applying these algorithms gave us enough confidence to work on real data set implementing algorithms learnt in class.
+Given some more time we could try to imrove our model by implementing bootstrapping, stacking and applying kaggle top algorithams like XGboost.
+
+#LIST OF REFERENCES
+
+* https://www.stat.berkeley.edu/~breiman/RandomForests/cc_home.htm
+* http://www.cs.upc.edu/~bejar/apren/docum/trans/03d-algind-knn-eng.pdf
+* http://machinelearningmastery.com/naive-bayes-classifier-scratch-python/
+* http://www.rdatamining.com/
+* http://www.analyticsvidhya.com/blog/2015/08/common-machine-learning-algorithms/
+* 

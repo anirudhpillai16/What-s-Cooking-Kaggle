@@ -1,0 +1,20 @@
+library(jsonlite)
+library(tree)
+library(tm)
+library(SnowballC)
+library(h2o)
+train_data<- fromJSON('C:/ML/Project/train.json')
+test_data<- fromJSON('C:/ML/Project/test.json')
+cus<-unique(train_data$cuisine)
+print("Number of Unique Cusines are = ")
+cus
+ftable<-table(train_data$cuisine)
+print("Bar Plot for Cusines")
+barplot(ftable)
+print("Total Number of Dishes in Training Set")
+sum(ftable)
+print("Number of Times each dish appears =")
+ftable
+print("Maximum number of times a dish appears=")
+max(ftable)
+
